@@ -12,7 +12,6 @@
     width="430" 
     height="932" 
     style="border:none; overflow:hidden;" 
-    scrolling="no" 
     frameborder="0" 
     allow="payment">
 </iframe>

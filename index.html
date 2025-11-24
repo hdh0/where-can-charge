@@ -1,0 +1,1990 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>充电桩查询</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#007bff">
+  <link rel="apple-touch-icon" href="icons/icon-192x192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="充电桩查询">
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #f4f6f9;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    header {
+      background: linear-gradient(135deg, #007bff, #00c6ff);
+      color: white;
+      text-align: center;
+      padding: 16px 12px;
+      font-size: 1.3em;
+      /* border-radius: 12px; */
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+      margin-bottom: 12px;
+    }
+
+    .container {
+      max-width: 100%;
+      padding: 0 10px 10px;
+    }
+
+    h2 {
+      text-align: center;
+      font-size: 1.1em;
+      margin-bottom: 12px;
+      color: #333;
+    }
+
+    .location-card {
+      background-color: #ffffff;
+      border-radius: 12px;
+      padding: 12px 12px 8px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      transition: transform 0.2s ease;
+    }
+
+    .location-card:hover {
+      transform: translateY(-3px);
+    }
+
+    .location-name {
+      font-size: 1em;
+      font-weight: bold;
+      margin-bottom: 6px;
+      color: #333;
+    }
+
+    .port-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 4px;
+      scrollbar-width: thin;
+    }
+
+    .port-container {
+      display: flex;
+      min-width: max-content;
+      gap: 6px;
+    }
+
+    .port {
+      flex: 0 0 6vw;
+      max-width: 6vw;
+      aspect-ratio: 1 / 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      font-weight: bold;
+      color: white;
+      font-size: 10px;
+      flex-shrink: 0;
+      transition: transform 0.2s ease;
+    }
+
+    .available {
+      background-color: #28a745;
+    }
+
+    .used {
+      background-color: #dc3545;
+    }
+
+    .na {
+      background-color: #e9ecef;
+      color: #999;
+    }
+
+    footer {
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      justify-content: space-around;
+      background-color: #ffffff;
+      border-radius: 30px;
+      padding: 4px 10px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      width: auto;
+      max-width: 300px;
+    }
+
+    footer a {
+      flex: 1;
+      text-align: center;
+      text-decoration: none;
+      color: #666;
+      padding: 10px 14px;
+      border-radius: 26px;
+      font-size: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: all 0.3s;
+    }
+
+    footer a.active {
+      background-color: #007bff;
+      color: white;
+    }
+
+    svg.icon {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+
+    input[type="text"]:focus {
+      border-color: #007bff;
+    }
+
+    button.add-btn,
+    button.notify-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 12px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    button.delete-btn {
+      background-color: transparent;
+      border: none;
+      color: #dc3545;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .device-list {
+      margin-top: 15px;
+    }
+
+    .device-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 12px 12px 16px;
+      background-color: #f9f9f9;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      cursor: grab;
+      transition: background-color 0.3s;
+    }
+
+    .device-item:hover {
+      background-color: #f1f1f1;
+    }
+
+    .device-item.dragging {
+      opacity: 0.6;
+    }
+
+    .device-info {
+      flex: 1;
+      font-size: 14px;
+    }
+
+    .device-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .notify-switch {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .notify-switch input {
+      transform: scale(1.2);
+    }
+
+
+    @keyframes pulse {
+      0% { opacity: 0.6; }
+      50% { opacity: 0.9; }
+      100% { opacity: 0.6; }
+    }
+    
+    .loading .port.na {
+      animation: pulse 1.5s infinite;
+    }
+    
+    .port-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 4px;
+      scrollbar-width: thin;
+    }
+    
+    /* 添加充电口状态统计信息样式 */
+    .port-status-summary {
+      display: flex;
+      justify-content: flex-end;
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+    
+    .status-count {
+      display: flex;
+      align-items: center;
+      margin-left: 8px;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 3px;
+    }
+    
+    .dot-available {
+      background-color: #28a745;
+    }
+    
+    .dot-used {
+      background-color: #dc3545;
+    }
+    
+    .dot-na {
+      background-color: #e9ecef;
+    }
+
+    .toggle-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 10px;
+      background-color: #f1f1f1;
+      color: #333;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+    
+    .toggle-btn:hover {
+      background-color: #e5e5e5;
+    }
+    
+    .toggle-btn svg {
+      margin-right: 5px;
+      transition: transform 0.3s ease;
+    }
+    
+    .toggle-btn.active svg {
+      transform: rotate(180deg);
+    }
+    
+    .batch-import-section {
+      margin: 15px 0;
+      border: 1px solid #eaeaea;
+      border-radius: 8px;
+      padding: 10px;
+      background-color: #f9f9f9;
+    }
+
+    .drag-handle {
+      width: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: #6c757d;
+      cursor: grab;
+      margin-right: 8px;
+      touch-action: none;  /* 防止手柄上的触摸事件触发页面滑动 */
+    }
+    
+    .drag-handle:hover {
+      color: #495057;
+    }
+    
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+    
+    .device-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px;
+      background-color: #f9f9f9;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      transition: background-color 0.3s;
+    }
+
+    .about-links {
+      margin-bottom: 100px;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+    }
+
+    .about-link {
+      text-decoration: none;
+      color: #007aff;
+      display: flex;
+      align-items: center;
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .about-link svg {
+      width: 18px;
+      height: 18px;
+      margin-right: 6px;
+    }
+
+    .about-close {
+      margin-top: 24px;
+      padding: 10px 20px;
+      border: none;
+      background: #007aff;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 15px;
+      color: white;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+    
+    .about-close:active {
+      background: #0062cc;
+    }
+
+    /* Powered by 样式更新 */
+    .powered-by {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 5px auto;
+      margin-bottom: 100px;
+      padding: 15px;
+      max-width: 280px;
+      background-color: #f8f9fa;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+    
+    .powered-text {
+      font-size: 12px;
+      color: #6c757d;
+      margin-bottom: 10px;
+      letter-spacing: 0.5px;
+    }
+    
+    .powered-links {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .powered-logo, .about-link {
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+      color: #007bff;
+      font-size: 14px;
+      font-weight: 500;
+      transition: opacity 0.2s;
+      padding: 5px 8px;
+    }
+    
+    .powered-logo:hover, .about-link:hover {
+      opacity: 0.8;
+      background-color: rgba(0, 123, 255, 0.05);
+      border-radius: 6px;
+    }
+    
+    .ai-logo {
+      width: 20px;
+      height: 20px;
+      margin-right: 6px;
+    }
+    
+    .divider {
+      margin: 0 8px;
+      color: #ccc;
+      font-size: 12px;
+      font-weight: 300;
+    }
+
+    /* 搜索框样式 */
+    .search-container {
+      margin: 0 5px 15px;
+    }
+    
+    .search-box {
+      position: relative;
+      display: flex;
+      align-items: center;
+      background-color: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      padding: 0 10px;
+      margin-bottom: 10px;
+      height: 44px;
+    }
+    
+    .search-icon {
+      width: 20px;
+      height: 20px;
+      color: #777;
+      flex-shrink: 0;
+    }
+    
+    #searchInput {
+      flex: 1;
+      border: none;
+      padding: 0 10px;
+      font-size: 15px;
+      background: transparent;
+      outline: none;
+      height: 100%;
+    }
+    
+    .clear-search {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: none;
+      background: #f0f0f0;
+      color: #777;
+      font-size: 18px;
+      line-height: 1;
+      display: none; /* 默认隐藏 */
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+    }
+    
+    .clear-search:active {
+      background: #e0e0e0;
+    }
+    
+    /* 空搜索结果样式 */
+    .no-results {
+      text-align: center;
+      padding: 20px;
+      color: #777;
+      background: #f9f9f9;
+      border-radius: 10px;
+      margin: 10px 0;
+    }
+    
+    /* 搜索高亮样式 */
+    .highlight {
+      background-color: rgba(255, 251, 0, 0.3);
+      padding: 0 2px;
+      border-radius: 2px;
+    }
+
+    /* 设备分组样式 */
+    .device-group {
+      margin-bottom: 15px;
+      background-color: #ffffff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+    
+    .device-group-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 15px;
+      background-color: #f0f4f8;
+      cursor: pointer;
+      font-weight: 500;
+      color: #333;
+      border-bottom: 1px solid #e5e9ef;
+      transition: background-color 0.2s;
+    }
+    
+    .device-group-header:hover {
+      background-color: #e5ecf6;
+    }
+    
+    .device-group-header.collapsed {
+      border-bottom: none;
+    }
+    
+    .group-name {
+      font-size: 16px;
+    }
+    
+    .group-count {
+      background-color: #007bff;
+      color: white;
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      min-width: 24px;
+      text-align: center;
+      margin-left: 10px;
+    }
+    
+    .group-toggle {
+      color: #666;
+      font-size: 12px;
+      transition: transform 0.2s;
+    }
+    
+    .device-group-items {
+      background-color: #ffffff;
+      border-radius: 0 0 12px 12px;
+    }
+    
+    /* 调整设备项样式以适应分组 */
+    .device-group .device-item {
+      border-radius: 0;
+      margin-bottom: 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .device-group .device-item:last-child {
+      border-bottom: none;
+    }
+
+    /* 分组拖拽相关样式 */
+    .group-drag-handle {
+      width: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #6c757d;
+      cursor: grab;
+      margin-right: 8px;
+      touch-action: none;
+    }
+    
+    .group-drag-handle:hover {
+      color: #495057;
+    }
+    
+    .group-drag-handle:active {
+      cursor: grabbing;
+    }
+    
+    .device-group-header {
+      display: flex;
+      align-items: center;
+      padding: 12px 15px;
+      background-color: #f0f4f8;
+      cursor: default;
+      font-weight: 500;
+      color: #333;
+      border-bottom: 1px solid #e5e9ef;
+      transition: background-color 0.2s;
+    }
+    
+    .group-title-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+    }
+    
+    .group-action-area {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .visibility-toggle, .expand-toggle {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #666;
+      transition: color 0.2s;
+    }
+    
+    .visibility-toggle:hover, .expand-toggle:hover {
+      color: #007bff;
+    }
+    
+    .visibility-toggle svg {
+      width: 22px;
+      height: 22px;
+    }
+    
+    .device-group.hidden {
+      opacity: 0.6;
+    }
+
+    /* 搜索历史记录样式 - 修改为标签样式 */
+    .search-history {
+      background-color: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      margin-top: 8px;
+      padding: 8px 12px;
+    }
+    
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    
+    .clear-history {
+      background: none;
+      border: none;
+      color: #007bff;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 3px 6px;
+    }
+    
+    .history-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    
+    .history-item {
+      display: inline-flex;
+      align-items: center;
+      background-color: #f0f4f8;
+      border-radius: 16px;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      max-width: 180px;
+    }
+    
+    .history-item:hover {
+      background-color: #e0e8f0;
+    }
+    
+    .history-icon {
+      color: #777;
+      margin-right: 4px;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    
+    .history-text {
+      font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+
+  <header>充电桩空闲状态查询</header>
+
+  <!-- 主页 -->
+  <div id="homePage">
+    <div class="container">
+      <!-- 添加搜索框 -->
+      <div class="search-container">
+        <div class="search-box">
+          <svg class="search-icon" viewBox="0 0 24 24">
+            <path fill="currentColor" d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+          </svg>
+          <input type="text" id="searchInput" placeholder="搜索充电桩位置..." autocomplete="off">
+          <button id="clearSearch" class="clear-search">×</button>
+        </div>
+        <!-- 添加最近查询历史区域 -->
+        <div class="search-history" id="searchHistory" style="display: none;">
+          <div class="history-header">
+            <span>最近查询</span>
+            <button class="clear-history" id="clearHistory">清除历史</button>
+          </div>
+          <div class="history-items" id="historyItems"></div>
+        </div>
+      </div>
+      <div id="allLocationsContainer"></div>
+    </div>
+  </div>
+
+  <!-- 管理页面 -->
+  <div id="managePage" style="display:none;">
+    <div class="container">
+      <!-- <h2>管理设备列表</h2> -->
+      <div class="form-group">
+        <label for="locationName">地点名称：</label>
+        <input type="text" id="locationName" placeholder="例如：三食堂南侧" />
+      </div>
+      <div class="form-group">
+        <label for="deviceId">设备ID：</label>
+        <input type="text" id="deviceId" placeholder="例如：242043" />
+      </div>
+      <button class="add-btn" onclick="addDevice()">
+        <svg class="icon" viewBox="0 0 24 24">
+          <path d="M12 5v14m7-7H5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        添加设备
+      </button>
+
+      <!-- 批量导入 -->
+      <div class="batch-import-section">
+        <button class="toggle-btn" onclick="toggleBatchImport()">
+          <svg class="icon" viewBox="0 0 24 24" style="width: 16px; height: 16px;">
+            <path d="M19 9l-7 7-7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          批量导入设备
+        </button>
+        
+        <div id="batchImportForm" style="display: none; margin-top: 10px;">
+          <div class="form-group">
+            <textarea id="batchImportText" rows="6" placeholder="每行一个设备，格式：名称 ID" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; margin-top: 5px;"></textarea>
+          </div>
+          <button class="add-btn" onclick="importDevices()">
+            <svg class="icon" viewBox="0 0 24 24">
+              <path d="M19 12h-14m7 7V5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" transform="rotate(90 12 12)"/>
+            </svg>
+            导入设备
+          </button>
+        </div>
+      </div>
+      <div class="notify-switch">
+        <input type="checkbox" id="enableNotify" onchange="toggleNotification(this.checked)" />
+        <label for="enableNotify">启用空闲提醒通知</label>
+      </div>
+      <div class="device-list" id="deviceList"></div>
+    </div>
+    <!-- 简介 -->
+    <div class="powered-by">
+      <span class="powered-text">Powered by</span>
+      <div class="powered-links">
+        <a href="https://github.com/hdh0" target="_blank" class="powered-logo">
+          <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiMwMDdiZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTEuNjcgMy44N0w5LjkgMi4xIDcgNXYzZjNsLTQuOSA0LjkgMS43IDEuNyIvPjxwYXRoIGQ9Ik0xMi4zMyAyMC4xM0wxNC4xIDIxLjkgMTcgMTl2LTMtM2w0LjktNC45LTEuNy0xLjciLz48cGF0aCBkPSJNOC41NiAxMS45TDYgNi42bDEwLjU1IDYuODUiLz48cGF0aCBkPSJNMTUuNDQgMTIuMUwxOCAxNy40IDcuNDUgMTAuNTUiLz48cGF0aCBkPSJNMTIgMjJjNS41MjMgMCAxMC00LjQ3NyAxMC0xMFMxNy41MjMgMiAxMiAyIDIgNi40NzcgMiAxMnM0LjQ3NyAxMCAxMCAxMHoiLz48L3N2Zz4=" alt="Claude icon" class="ai-logo">
+          <span>Claude 3.7</span>
+        </a>
+        <span class="divider">❌</span>
+        <a href="https://github.com/hdh0" target="_blank" class="about-link">
+          <svg viewBox="0 0 24 24">
+            <path fill="currentColor" d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 导航栏 -->
+  <footer>
+    <a href="#" class="active" onclick="showPage('home')">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" stroke="currentColor" stroke-width="2" fill="none" />
+        <path d="M9 22V12h6v10" stroke="currentColor" stroke-width="2" fill="none" />
+      </svg>
+      查询
+    </a>
+    <a href="#" onclick="showPage('manage')">
+      <svg class="icon" viewBox="0 0 24 24">
+        <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" stroke="currentColor" stroke-width="2" />
+        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51 1.65 1.65 0 001.51 1 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00.33 1.82 1.65 1.65 0 001.51 1 1.65 1.65 0 001-1.51 1.65 1.65 0 00-1.51-1.05zM12 20a8 8 0 118-8 8 8 0 01-8 8z" stroke="currentColor" stroke-width="2" fill="none" />
+      </svg>
+      管理
+    </a>
+  </footer>
+
+  <script>
+    let deviceDict = JSON.parse(localStorage.getItem('deviceDict')) || {
+      "矿科北（东东）": "569541",
+      "矿科北（西）": "569545",
+      "矿科北（西西）": "569546",
+      "矿科北（东）": "569542",
+      "矿科北（中西）": "569544",
+      "矿科北（中东）": "569543",
+      "计算机学院": "609528",
+      "竹3北（西）": "242041",
+      "竹3北（中）": "242042",
+      "大创中心（西）": "571273",
+      "化工学院南": "240736",
+      "博4南（西）": "460069",
+      "博4南（东）": "460068",
+      "竹3北（东）": "582834",
+      "行健楼东南侧": "225543",
+      "矿科中心广场（北）": "472907",
+      "矿科西停车场（南）": "465806",
+      "矿科西停车场（中南）": "465807",
+      "矿科西停车场（北）": "465808",
+      "矿科西停车场（中北）": "465809",
+      "计算机学院2": "609529",
+      "竹3北（中西）": "313847",
+      "机电学院1": "459775",
+      "人文学院西（北）": "346571",
+      "人文学院西（南）": "276577",
+      "环测学院东": "455881",
+      "机电学院2": "459776",
+      "环测学院东2": "367828",
+      "竹3北（中东）": "582833",
+      "矿科中心广场（西）": "232940",
+      "兰3北（西）": "228179",
+      "兰3北（东）": "240734",
+      "兰3车棚北（中）": "409082",
+      "兰3北（中东）": "240733",
+      "兰3车棚北（东）": "409084",
+      "兰3车棚北（西）": "409081",
+      "材料与物理学院": "503351",
+      "大创中心（东）": "239034",
+      "桃3东（北）": "346514",
+      "三食堂南侧（西）": "242043",
+      "三食堂南侧（东）": "268217",
+      "校医院南（北）": "232549",
+      "桃3东（南）": "276642",
+      "校医院南（南）": "260038",
+      "机电学院南": "277329",
+      "信控学院北门": "277152",
+      "桃5东（南）": "313703",
+      "兰3北（中西）": "228086",
+      "松4南/杏1东（西）": "266655",
+      "桃5东（北）": "274348",
+      "松4南/杏1东（东）": "314068",
+    };
+    let notifyEnabled = localStorage.getItem('notifyEnabled') === 'true';
+    let notifySubscriptions = JSON.parse(localStorage.getItem('notifySubscriptions')) || [];
+    let groupVisibility = JSON.parse(localStorage.getItem('groupVisibility')) || {};
+    let lastStatus = JSON.parse(localStorage.getItem('lastPortStatus')) || {};
+    let groupCollapsedState = JSON.parse(localStorage.getItem('groupCollapsedState')) || {};
+    let searchHistory = JSON.parse(localStorage.getItem('searchHistory')) || [];
+    const MAX_HISTORY_ITEMS = 5; // 最多保存5条历史记录
+    
+    const notifyCheckbox = document.getElementById('enableNotify');
+    if (notifyCheckbox) notifyCheckbox.checked = notifyEnabled;
+
+    function saveToDeviceDict() {
+      localStorage.setItem('deviceDict', JSON.stringify(deviceDict));
+    }
+
+    // 修改通知切换函数
+    function toggleNotification(enabled) {
+      notifyEnabled = enabled;
+      localStorage.setItem('notifyEnabled', enabled);
+      
+      if (enabled) {
+        // 请求通知权限
+        requestNotificationPermission();
+        // 立即开始检查
+        checkForAvailableChargingPorts();
+      }
+    }
+
+    // 请求通知权限的函数
+    function requestNotificationPermission() {
+      if (!("Notification" in window)) {
+        alert("此浏览器不支持桌面通知");
+        return;
+      }
+      
+      if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            console.log('通知权限已获取');
+            // 显示测试通知
+            new Notification('通知已开启', {
+              body: '当您订阅的充电桩有空闲时，您将收到提醒',
+              icon: 'icons/icon-192x192.png'
+            });
+          }
+        });
+      }
+    }
+
+    // 添加搜索功能
+    function setupSearch() {
+      const searchInput = document.getElementById('searchInput');
+      const clearButton = document.getElementById('clearSearch');
+      
+      // 显示或隐藏清除按钮
+      searchInput.addEventListener('input', function() {
+        clearButton.style.display = this.value ? 'flex' : 'none';
+        filterLocations(this.value);
+      });
+      
+      // 清除搜索
+      clearButton.addEventListener('click', function() {
+        searchInput.value = '';
+        clearButton.style.display = 'none';
+        filterLocations('');
+        searchInput.focus();
+      });
+      
+      // 当点击回车时也执行搜索
+      searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          filterLocations(this.value);
+        }
+      });
+    }
+    
+    // 根据搜索词过滤位置
+    function filterLocations(searchTerm) {
+      const container = document.getElementById('allLocationsContainer');
+      const cards = container.querySelectorAll('.location-card');
+      const normalizedSearchTerm = searchTerm.trim().toLowerCase();
+      let visibleCount = 0;
+      
+      cards.forEach(card => {
+        const locationName = card.querySelector('.location-name').textContent;
+        
+        if (normalizedSearchTerm === '') {
+          // 如果搜索词为空，显示所有卡片
+          card.style.display = 'block';
+          card.querySelector('.location-name').innerHTML = locationName;
+          visibleCount++;
+        } else if (locationName.toLowerCase().includes(normalizedSearchTerm)) {
+          // 如果匹配，显示并高亮匹配文本
+          card.style.display = 'block';
+          const highlightedText = locationName.replace(
+            new RegExp(normalizedSearchTerm, 'gi'),
+            match => `<span class="highlight">${match}</span>`
+          );
+          card.querySelector('.location-name').innerHTML = highlightedText;
+          visibleCount++;
+        } else {
+          // 不匹配则隐藏
+          card.style.display = 'none';
+        }
+      });
+      
+      // 如果没有显示结果，显示"无结果"提示
+      let noResultsElem = container.querySelector('.no-results');
+      
+      if (visibleCount === 0 && normalizedSearchTerm !== '') {
+        if (!noResultsElem) {
+          noResultsElem = document.createElement('div');
+          noResultsElem.className = 'no-results';
+          noResultsElem.textContent = `没有找到与"${searchTerm}"相关的充电桩`;
+          container.appendChild(noResultsElem);
+        } else {
+          noResultsElem.textContent = `没有找到与"${searchTerm}"相关的充电桩`;
+          noResultsElem.style.display = 'block';
+        }
+      } else if (noResultsElem) {
+        noResultsElem.style.display = 'none';
+      }
+    }
+
+    // 记录查看历史
+    function addToHistory(locationName) {
+      // 如果该位置已经在历史记录中，先移除它
+      searchHistory = searchHistory.filter(item => item !== locationName);
+      
+      // 添加到历史记录的最前面
+      searchHistory.unshift(locationName);
+      
+      // 如果超过最大数量，删除最后一条
+      if (searchHistory.length > MAX_HISTORY_ITEMS) {
+        searchHistory.pop();
+      }
+      
+      // 保存到本地存储
+      localStorage.setItem('searchHistory', JSON.stringify(searchHistory));
+      
+      // 更新显示
+      renderSearchHistory();
+    }
+    
+    // 渲染历史记录
+    function renderSearchHistory() {
+      const historyContainer = document.getElementById('historyItems');
+      const searchHistoryElement = document.getElementById('searchHistory');
+      
+      // 如果没有历史记录，隐藏整个区域
+      if (searchHistory.length === 0) {
+        searchHistoryElement.style.display = 'none';
+        return;
+      }
+      
+      // 显示历史记录区域
+      searchHistoryElement.style.display = 'block';
+      
+      // 清空容器
+      historyContainer.innerHTML = '';
+      
+      // 添加历史条目
+      searchHistory.forEach(item => {
+        const historyItem = document.createElement('div');
+        historyItem.className = 'history-item';
+        historyItem.innerHTML = `
+          <svg class="history-icon" viewBox="0 0 24 24" width="12" height="12">
+            <path fill="currentColor" d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
+          </svg>
+          <span class="history-text">${item}</span>
+        `;
+        
+        // 点击历史记录项时，跳转到对应位置
+        historyItem.addEventListener('click', () => {
+          // 执行原有功能
+          scrollToLocation(item);
+          
+          // 更新搜索框
+          const searchInput = document.getElementById('searchInput');
+          if (searchInput) {
+            searchInput.value = item;
+            // 触发搜索，这样其他位置会被过滤掉
+            filterLocations(item);
+            
+            // 显示清除按钮
+            const clearButton = document.getElementById('clearSearch');
+            if (clearButton) clearButton.style.display = 'flex';
+          }
+          
+          // 点击后隐藏历史记录
+          document.getElementById('searchHistory').style.display = 'none';
+        });
+        
+        historyContainer.appendChild(historyItem);
+      });
+    }
+    
+    // 清除历史记录
+    function clearSearchHistory() {
+      searchHistory = [];
+      localStorage.removeItem('searchHistory');
+      renderSearchHistory();
+    }
+    
+    // 滚动到指定位置
+    function scrollToLocation(locationName) {
+      // 清除所有高亮
+      document.querySelectorAll('.location-card').forEach(card => {
+        card.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.08)';
+      });
+      
+      // 查找对应的位置卡片
+      const allCards = document.querySelectorAll('.location-card');
+      let targetCard = null;
+      
+      allCards.forEach(card => {
+        const cardTitle = card.querySelector('.location-name');
+        if (cardTitle && cardTitle.textContent === locationName) {
+          targetCard = card;
+        }
+      });
+      
+      if (targetCard) {
+        // 高亮显示卡片
+        targetCard.style.boxShadow = '0 0 0 2px #007bff, 0 2px 8px rgba(0, 0, 0, 0.2)';
+        
+        // 平滑滚动到该位置
+        targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+    
+    // 初始化历史记录功能
+    function initializeSearchHistory() {
+      // 渲染历史记录
+      renderSearchHistory();
+      
+      // 为清除按钮添加事件监听
+      const clearButton = document.getElementById('clearHistory');
+      if (clearButton) {
+        clearButton.addEventListener('click', (e) => {
+          e.stopPropagation(); // 防止事件冒泡
+          clearSearchHistory();
+        });
+      }
+      
+      // 为搜索框添加点击事件，显示历史记录
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput) {
+        searchInput.addEventListener('focus', () => {
+          if (searchHistory.length > 0) {
+            document.getElementById('searchHistory').style.display = 'block';
+          }
+        });
+        
+        // 点击其他地方时隐藏历史记录
+        document.addEventListener('click', (e) => {
+          const searchContainer = document.querySelector('.search-container');
+          if (!searchContainer.contains(e.target)) {
+            document.getElementById('searchHistory').style.display = 'none';
+          }
+        });
+      }
+    }
+
+    // 修改点击卡片事件，记录历史
+    function createLocationCard(name, id, ports) {
+      const card = document.createElement('div');
+      card.className = 'location-card';
+      card.id = `location-${id}`;
+      
+      const title = document.createElement('div');
+      title.className = 'location-name';
+      title.textContent = name;
+      
+      const portWrapper = createPortContainer(ports);
+      const summary = createStatusSummary(ports);
+      
+      card.appendChild(title);
+      card.appendChild(portWrapper);
+      card.appendChild(summary);
+      
+      // 添加点击事件，记录到历史记录
+      card.addEventListener('click', () => {
+        addToHistory(name);
+      });
+      
+      return card;
+    }
+    
+    // 修改 showPage 函数，在切换到主页时重置搜索
+    function showPage(page) {
+      document.querySelectorAll('footer a').forEach(link => link.classList.remove('active'));
+      document.getElementById('homePage').style.display = 'none';
+      document.getElementById('managePage').style.display = 'none';
+    
+      if (page === 'home') {
+        document.querySelector('footer a:first-child').classList.add('active');
+        document.getElementById('homePage').style.display = 'block';
+        
+        // 重置搜索框
+        const searchInput = document.getElementById('searchInput');
+        const clearButton = document.getElementById('clearSearch');
+        if (searchInput) searchInput.value = '';
+        if (clearButton) clearButton.style.display = 'none';
+        
+        renderAllChargingPorts();
+      } else if (page === 'manage') {
+        document.querySelector('footer a:last-child').classList.add('active');
+        document.getElementById('managePage').style.display = 'block';
+        renderDeviceList();
+      }
+    }
+
+    function addDevice() {
+      const location = document.getElementById('locationName').value.trim();
+      const deviceId = document.getElementById('deviceId').value.trim();
+
+      if (!location || !deviceId || isNaN(deviceId)) {
+        alert('请输入有效的地点和数字ID');
+        return;
+      }
+
+      deviceDict[location] = parseInt(deviceId);
+      saveToDeviceDict();
+      renderDeviceList();
+      document.getElementById('locationName').value = '';
+      document.getElementById('deviceId').value = '';
+    }
+
+    // 切换批量导入表单的显示/隐藏
+    function toggleBatchImport() {
+      const form = document.getElementById('batchImportForm');
+      const button = document.querySelector('.toggle-btn');
+      
+      if (form.style.display === 'none') {
+        form.style.display = 'block';
+        button.classList.add('active');
+      } else {
+        form.style.display = 'none';
+        button.classList.remove('active');
+      }
+    }
+  
+    // 批量导入设备
+    function importDevices() {
+      const text = document.getElementById('batchImportText').value.trim();
+      if (!text) {
+        alert('请输入设备信息');
+        return;
+      }
+      
+      const lines = text.split('\n');
+      let importCount = 0;
+      let invalidCount = 0;
+      
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        
+        // 尝试匹配格式：名称 ID
+        const match = line.trim().match(/^(.+?)\s+(.+?)$/);
+        
+        if (match) {
+          const name = match[1].trim();
+          const id = match[2];
+          
+          // 导入到设备字典
+          deviceDict[name] = id;
+          importCount++;
+        } else {
+          invalidCount++;
+        }
+      }
+      
+      saveToDeviceDict();
+      renderDeviceList();
+      
+      // 清空输入框
+      document.getElementById('batchImportText').value = '';
+      
+      // 显示导入结果
+      const resultMessage = `成功导入 ${importCount} 个设备` + 
+                          (invalidCount > 0 ? `，${invalidCount} 行格式错误被忽略` : '');
+      
+      alert(resultMessage);
+      
+      // 如果全部成功导入，则关闭导入表单
+      if (invalidCount === 0) {
+        toggleBatchImport();
+      }
+    }
+
+    function deleteDevice(location) {
+      delete deviceDict[location];
+      saveToDeviceDict();
+      renderDeviceList();
+      renderAllChargingPorts();
+    }
+
+    function isSubscribed(location) {
+      return notifySubscriptions.includes(location);
+    }
+
+    function toggleSubscription(location) {
+      const index = notifySubscriptions.indexOf(location);
+      if (index === -1) {
+        notifySubscriptions.push(location);
+      } else {
+        notifySubscriptions.splice(index, 1);
+      }
+      localStorage.setItem('notifySubscriptions', JSON.stringify(notifySubscriptions));
+    }
+
+    function renderDeviceList() {
+      const container = document.getElementById('deviceList');
+      container.innerHTML = '';
+    
+      // 获取分组显示状态
+      const groupVisibility = JSON.parse(localStorage.getItem('groupVisibility') || '{}');
+      
+      // 获取保存的分组顺序
+      const savedGroupOrder = JSON.parse(localStorage.getItem('groupOrder') || '[]');
+      
+      // 按首字母分组设备
+      const groupedDevices = {};
+      
+      // 对象按键排序
+      const sortedDeviceNames = Object.keys(deviceDict).sort();
+      
+      // 将设备按首字母分组
+      sortedDeviceNames.forEach(loc => {
+        // 获取首字母或汉字
+        const firstChar = loc.charAt(0).toUpperCase();
+        if (!groupedDevices[firstChar]) {
+          groupedDevices[firstChar] = [];
+        }
+        groupedDevices[firstChar].push(loc);
+      });
+      
+      // 获取所有分组名称
+      let allGroups = Object.keys(groupedDevices);
+      
+      // 应用保存的分组顺序
+      let orderedGroups;
+      if (savedGroupOrder.length > 0) {
+        // 先添加保存顺序中存在的分组
+        const validSavedGroups = savedGroupOrder.filter(g => allGroups.includes(g));
+        // 再添加新的分组(按字母顺序)
+        const newGroups = allGroups.filter(g => !savedGroupOrder.includes(g)).sort();
+        orderedGroups = [...validSavedGroups, ...newGroups];
+      } else {
+        // 如果没有保存顺序，按字母顺序排列
+        orderedGroups = allGroups.sort();
+      }
+      
+      // 按排序后的分组顺序渲染
+      orderedGroups.forEach(group => {
+        // 创建分组容器
+        const groupContainer = document.createElement('div');
+        groupContainer.className = 'device-group';
+        groupContainer.setAttribute('data-group', group);
+        
+        // 获取分组是否可见，默认为可见
+        const isVisible = groupVisibility[group] !== false; // 默认为true
+        if (!isVisible) {
+          groupContainer.classList.add('hidden');
+        }
+        
+        // 创建分组头部
+        const groupHeader = document.createElement('div');
+        groupHeader.className = 'device-group-header';
+        
+        // 创建分组标题和操作区
+        const titleArea = document.createElement('div');
+        titleArea.className = 'group-title-area';
+        titleArea.innerHTML = `
+          <span class="group-name">${group}</span>
+          <span class="group-count">${groupedDevices[group].length}</span>
+        `;
+        
+        // 创建分组操作区
+        const actionArea = document.createElement('div');
+        actionArea.className = 'group-action-area';
+        
+        // 添加显示/隐藏开关
+        const visibilityToggle = document.createElement('div');
+        visibilityToggle.className = 'visibility-toggle';
+        visibilityToggle.innerHTML = isVisible ? 
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M512 160c320 0 512 352 512 352S832 864 512 864 0 512 0 512s192-352 512-352m0 64c-225.28 0-384.128 208.064-436.8 288 52.608 79.872 211.456 288 436.8 288 225.28 0 384.128-208.064 436.8-288-52.608-79.872-211.456-288-436.8-288zm0 64a224 224 0 1 1 0 448 224 224 0 0 1 0-448m0 64a160.192 160.192 0 0 0-160 160c0 88.192 71.744 160 160 160s160-71.808 160-160-71.744-160-160-160"></path></svg>' : 
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M876.8 156.8c0-9.6-3.2-16-9.6-22.4-6.4-6.4-12.8-9.6-22.4-9.6-9.6 0-16 3.2-22.4 9.6L736 220.8c-64-32-137.6-51.2-224-60.8-160 16-288 73.6-377.6 176C44.8 438.4 0 496 0 512s48 73.6 134.4 176c22.4 25.6 44.8 48 73.6 67.2l-86.4 89.6c-6.4 6.4-9.6 12.8-9.6 22.4 0 9.6 3.2 16 9.6 22.4 6.4 6.4 12.8 9.6 22.4 9.6 9.6 0 16-3.2 22.4-9.6l704-710.4c3.2-6.4 6.4-12.8 6.4-22.4Zm-646.4 528c-76.8-70.4-128-128-153.6-172.8 28.8-48 80-105.6 153.6-172.8C304 272 400 230.4 512 224c64 3.2 124.8 19.2 176 44.8l-54.4 54.4C598.4 300.8 560 288 512 288c-64 0-115.2 22.4-160 64s-64 96-64 160c0 48 12.8 89.6 35.2 124.8L256 707.2c-9.6-6.4-19.2-16-25.6-22.4Zm140.8-96c-12.8-22.4-19.2-48-19.2-76.8 0-44.8 16-83.2 48-112 32-28.8 67.2-48 112-48 28.8 0 54.4 6.4 73.6 19.2zM889.599 336c-12.8-16-28.8-28.8-41.6-41.6l-48 48c73.6 67.2 124.8 124.8 150.4 169.6-28.8 48-80 105.6-153.6 172.8-73.6 67.2-172.8 108.8-284.8 115.2-51.2-3.2-99.2-12.8-140.8-28.8l-48 48c57.6 22.4 118.4 38.4 188.8 44.8 160-16 288-73.6 377.6-176C979.199 585.6 1024 528 1024 512s-48.001-73.6-134.401-176Z"></path><path fill="currentColor" d="M511.998 672c-12.8 0-25.6-3.2-38.4-6.4l-51.2 51.2c28.8 12.8 57.6 19.2 89.6 19.2 64 0 115.2-22.4 160-64 41.6-41.6 64-96 64-160 0-32-6.4-64-19.2-89.6l-51.2 51.2c3.2 12.8 6.4 25.6 6.4 38.4 0 44.8-16 83.2-48 112-32 28.8-67.2 48-112 48Z"></path></svg>';
+        
+        // 添加折叠/展开按钮
+        const expandToggle = document.createElement('div');
+        expandToggle.className = 'expand-toggle';
+        expandToggle.textContent = '▼';
+        
+        // 将操作按钮添加到操作区
+        actionArea.appendChild(visibilityToggle);
+        actionArea.appendChild(expandToggle);
+        
+        // 将标题区和操作区添加到分组头部
+        groupHeader.appendChild(titleArea);
+        groupHeader.appendChild(actionArea);
+        
+        // 创建设备列表容器
+        const groupItems = document.createElement('div');
+        groupItems.className = 'device-group-items';
+        
+        // 为分组添加拖拽手柄
+        const groupDragHandle = document.createElement('div');
+        groupDragHandle.className = 'group-drag-handle';
+        groupDragHandle.innerHTML = '<svg t="1747834880043" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="6369" width="72" height="72"><path d="M298.666667 725.333333c46.933333 0 85.333333 38.4 85.333333 85.333334s-38.4 85.333333-85.333333 85.333333-85.333333-38.4-85.333334-85.333333 38.4-85.333333 85.333334-85.333334z m426.666666 0c46.933333 0 85.333333 38.4 85.333334 85.333334s-38.4 85.333333-85.333334 85.333333-85.333333-38.4-85.333333-85.333333 38.4-85.333333 85.333333-85.333334zM298.666667 426.666667c46.933333 0 85.333333 38.4 85.333333 85.333333s-38.4 85.333333-85.333333 85.333333-85.333333-38.4-85.333334-85.333333 38.4-85.333333 85.333334-85.333333z m426.666666 0c46.933333 0 85.333333 38.4 85.333334 85.333333s-38.4 85.333333-85.333334 85.333333-85.333333-38.4-85.333333-85.333333 38.4-85.333333 85.333333-85.333333zM298.666667 128c46.933333 0 85.333333 38.4 85.333333 85.333333s-38.4 85.333333-85.333333 85.333334-85.333333-38.4-85.333334-85.333334 38.4-85.333333 85.333334-85.333333z m426.666666 0c46.933333 0 85.333333 38.4 85.333334 85.333333s-38.4 85.333333-85.333334 85.333334-85.333333-38.4-85.333333-85.333334 38.4-85.333333 85.333333-85.333333z" fill="#000000" p-id="6370"></path></svg>';
+        groupHeader.insertBefore(groupDragHandle, titleArea);
+        
+        // 为显示/隐藏开关添加点击事件
+        visibilityToggle.addEventListener('click', (e) => {
+          e.stopPropagation(); // 阻止事件冒泡
+          
+          // 切换可见性状态
+          // 注意：这里要获取当前最新的可见性状态，而不是使用闭包中的isVisible
+          const currentVisibility = groupVisibility[group] !== false; // 默认为true
+          const newVisibility = !currentVisibility;
+          
+          // 更新保存的状态
+          groupVisibility[group] = newVisibility;
+          localStorage.setItem('groupVisibility', JSON.stringify(groupVisibility));
+          
+          // 更新UI
+          if (newVisibility) {
+            groupContainer.classList.remove('hidden');
+            visibilityToggle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M512 160c320 0 512 352 512 352S832 864 512 864 0 512 0 512s192-352 512-352m0 64c-225.28 0-384.128 208.064-436.8 288 52.608 79.872 211.456 288 436.8 288 225.28 0 384.128-208.064 436.8-288-52.608-79.872-211.456-288-436.8-288zm0 64a224 224 0 1 1 0 448 224 224 0 0 1 0-448m0 64a160.192 160.192 0 0 0-160 160c0 88.192 71.744 160 160 160s160-71.808 160-160-71.744-160-160-160"></path></svg>';
+          } else {
+            groupContainer.classList.add('hidden');
+            visibilityToggle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><path fill="currentColor" d="M876.8 156.8c0-9.6-3.2-16-9.6-22.4-6.4-6.4-12.8-9.6-22.4-9.6-9.6 0-16 3.2-22.4 9.6L736 220.8c-64-32-137.6-51.2-224-60.8-160 16-288 73.6-377.6 176C44.8 438.4 0 496 0 512s48 73.6 134.4 176c22.4 25.6 44.8 48 73.6 67.2l-86.4 89.6c-6.4 6.4-9.6 12.8-9.6 22.4 0 9.6 3.2 16 9.6 22.4 6.4 6.4 12.8 9.6 22.4 9.6 9.6 0 16-3.2 22.4-9.6l704-710.4c3.2-6.4 6.4-12.8 6.4-22.4Zm-646.4 528c-76.8-70.4-128-128-153.6-172.8 28.8-48 80-105.6 153.6-172.8C304 272 400 230.4 512 224c64 3.2 124.8 19.2 176 44.8l-54.4 54.4C598.4 300.8 560 288 512 288c-64 0-115.2 22.4-160 64s-64 96-64 160c0 48 12.8 89.6 35.2 124.8L256 707.2c-9.6-6.4-19.2-16-25.6-22.4Zm140.8-96c-12.8-22.4-19.2-48-19.2-76.8 0-44.8 16-83.2 48-112 32-28.8 67.2-48 112-48 28.8 0 54.4 6.4 73.6 19.2zM889.599 336c-12.8-16-28.8-28.8-41.6-41.6l-48 48c73.6 67.2 124.8 124.8 150.4 169.6-28.8 48-80 105.6-153.6 172.8-73.6 67.2-172.8 108.8-284.8 115.2-51.2-3.2-99.2-12.8-140.8-28.8l-48 48c57.6 22.4 118.4 38.4 188.8 44.8 160-16 288-73.6 377.6-176C979.199 585.6 1024 528 1024 512s-48.001-73.6-134.401-176Z"></path><path fill="currentColor" d="M511.998 672c-12.8 0-25.6-3.2-38.4-6.4l-51.2 51.2c28.8 12.8 57.6 19.2 89.6 19.2 64 0 115.2-22.4 160-64 41.6-41.6 64-96 64-160 0-32-6.4-64-19.2-89.6l-51.2 51.2c3.2 12.8 6.4 25.6 6.4 38.4 0 44.8-16 83.2-48 112-32 28.8-67.2 48-112 48Z"></path></svg>';
+          }
+          
+          // 更新首页
+          renderAllChargingPorts();
+        });
+        
+        // 为折叠/展开按钮添加点击事件
+        expandToggle.addEventListener('click', (e) => {
+          e.stopPropagation(); // 阻止事件冒泡
+          
+          // 切换折叠状态
+          const isCollapsed = !groupHeader.classList.contains('collapsed');
+          groupHeader.classList.toggle('collapsed');
+          groupItems.style.display = isCollapsed ? 'none' : 'block';
+          expandToggle.textContent = isCollapsed ? '▶' : '▼';
+          
+          // 保存折叠状态
+          groupCollapsedState[group] = isCollapsed;
+          localStorage.setItem('groupCollapsedState', JSON.stringify(groupCollapsedState));
+        });
+        
+        // 在创建分组后应用保存的折叠状态
+        const isCollapsed = groupCollapsedState[group] === true;
+        if (isCollapsed) {
+          groupHeader.classList.add('collapsed');
+          groupItems.style.display = 'none';
+          expandToggle.textContent = '▶';
+        } else {
+          groupHeader.classList.remove('collapsed');
+          groupItems.style.display = 'block';
+          expandToggle.textContent = '▼';
+        }
+        // 添加分组中的设备
+        groupedDevices[group].forEach(loc => {
+          const item = document.createElement('div');
+          item.className = 'device-item';
+          item.setAttribute('data-location', loc);
+          item.setAttribute('data-group', group);
+    
+          // 添加拖拽手柄
+          const dragHandle = document.createElement('div');
+          dragHandle.className = 'drag-handle';
+          dragHandle.innerHTML = '⋮⋮';
+    
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = isSubscribed(loc);
+          checkbox.onchange = () => toggleSubscription(loc);
+    
+          const info = document.createElement('div');
+          info.className = 'device-info';
+          info.appendChild(checkbox);
+          info.appendChild(document.createTextNode(` ${loc} - ${deviceDict[loc]}`));
+    
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'delete-btn';
+          deleteBtn.innerHTML = '❌';
+          deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            deleteDevice(loc);
+          };
+    
+          const actions = document.createElement('div');
+          actions.className = 'device-actions';
+          actions.appendChild(deleteBtn);
+    
+          item.appendChild(dragHandle);
+          item.appendChild(info);
+          item.appendChild(actions);
+    
+          groupItems.appendChild(item);
+        });
+        
+        
+        // 将分组添加到容器
+        groupContainer.appendChild(groupHeader);
+        groupContainer.appendChild(groupItems);
+        container.appendChild(groupContainer);
+        
+        // 初始化组内设备排序
+        initGroupSortable(groupItems);
+      });
+      
+      // 初始化分组排序
+      initGroupSortable(container, true);
+    }
+    
+    // 初始化组内排序
+    function initGroupSortable(container, isGroupContainer = false) {
+      new Sortable(container, {
+        animation: 150,
+        handle: isGroupContainer ? '.group-drag-handle' : '.drag-handle',
+        delay: 100,
+        touchStartThreshold: 10,
+        delayOnTouchOnly: true,
+        group: isGroupContainer ? 'groups' : 'devices', // 区分分组排序和设备排序
+        onEnd: function(evt) {
+          if (isGroupContainer) {
+            // 处理分组排序
+            saveGroupOrder();
+          } else {
+            // 处理设备排序
+            saveDeviceOrder();
+          }
+        }
+      });
+    }
+    
+    // 保存分组顺序
+    function saveGroupOrder() {
+      // 获取所有分组名称，按DOM顺序
+      const groups = Array.from(document.querySelectorAll('.device-group')).map(
+        group => group.getAttribute('data-group')
+      );
+      
+      console.log('保存分组顺序:', groups);
+      
+      // 保存分组顺序
+      localStorage.setItem('groupOrder', JSON.stringify(groups));
+      
+      // 更新主页面
+      renderAllChargingPorts();
+    }
+    
+    // 保存设备顺序
+    function saveDeviceOrder() {
+      // 重建整个设备字典保持组内排序
+      const newDict = {};
+      
+      // 获取所有分组元素
+      const groups = document.querySelectorAll('.device-group');
+      
+      // 按分组顺序依次处理
+      groups.forEach(groupElem => {
+        // 获取该分组内的所有设备项
+        const items = groupElem.querySelectorAll('.device-item');
+        
+        // 按顺序添加到新字典
+        items.forEach(item => {
+          const loc = item.getAttribute('data-location');
+          if (loc && deviceDict[loc] !== undefined) {
+            newDict[loc] = deviceDict[loc];
+          }
+        });
+      });
+      
+      // 确保没有设备被遗漏(防止有些设备不在DOM中)
+      Object.entries(deviceDict).forEach(([loc, id]) => {
+        if (newDict[loc] === undefined) {
+          newDict[loc] = id;
+        }
+      });
+      
+      // 更新全局变量
+      deviceDict = newDict;
+      
+      // 保存到本地存储
+      saveToDeviceDict();
+      
+      console.log('设备顺序已保存');
+      
+      // 更新主页面
+      renderAllChargingPorts();
+    }
+
+    async function fetchDevicePorts(deviceId) {
+      try {
+        const res = await fetch('https://power-api.powerliber.com/client/1/device/port-list ', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `device_id=${deviceId}`
+        });
+
+        const data = await res.json();
+        const ports = data?.data?.list || [];
+
+        const portDict = {
+          available: [],
+          used: []
+        };
+
+        for (const port of ports) {
+          if (port.charge_status === 1) {
+            portDict.used.push(port.port_index + 1);
+          } else {
+            portDict.available.push(port.port_index + 1);
+          }
+        }
+
+        const allPorts = Array.from({ length: 12 }, (_, i) => i + 1);
+        return allPorts.map(p => ({
+          number: p,
+          status: portDict.available.includes(p) ? 'available' : (portDict.used.includes(p) ? 'used' : 'na')
+        }));
+      } catch (error) {
+        console.error(`Error fetching device`, error);
+        return Array.from({ length: 12 }, (_, i) => ({ number: i + 1, status: 'na' }));
+      }
+    }
+
+    function createPortContainer(ports) {
+      const scrollWrapper = document.createElement('div');
+      scrollWrapper.className = 'port-scroll';
+
+      const portContainer = document.createElement('div');
+      portContainer.className = 'port-container';
+
+      ports.forEach(port => {
+        const div = document.createElement('div');
+        div.className = `port ${port.status}`;
+        div.textContent = `P${port.number}`;
+        portContainer.appendChild(div);
+      });
+
+      scrollWrapper.appendChild(portContainer);
+      return scrollWrapper;
+    }
+
+    function createStatusSummary(ports) {
+      const availableCount = ports.filter(p => p.status === 'available').length;
+      const usedCount = ports.filter(p => p.status === 'used').length;
+      const naCount = ports.filter(p => p.status === 'na').length;
+      
+      const summary = document.createElement('div');
+      summary.className = 'port-status-summary';
+      
+      if (availableCount > 0) {
+        const available = document.createElement('div');
+        available.className = 'status-count';
+        
+        const dot = document.createElement('div');
+        dot.className = 'status-dot dot-available';
+        
+        available.appendChild(dot);
+        available.appendChild(document.createTextNode(`空闲: ${availableCount}`));
+        summary.appendChild(available);
+      }
+      
+      if (usedCount > 0) {
+        const used = document.createElement('div');
+        used.className = 'status-count';
+        
+        const dot = document.createElement('div');
+        dot.className = 'status-dot dot-used';
+        
+        used.appendChild(dot);
+        used.appendChild(document.createTextNode(`使用: ${usedCount}`));
+        summary.appendChild(used);
+      }
+      
+      if (naCount > 0) {
+        const na = document.createElement('div');
+        na.className = 'status-count';
+        
+        const dot = document.createElement('div');
+        dot.className = 'status-dot dot-na';
+        
+        na.appendChild(dot);
+        na.appendChild(document.createTextNode(`无效: ${naCount}`));
+        summary.appendChild(na);
+      }
+      
+      return summary;
+    }
+
+    async function renderAllChargingPorts() {
+      const container = document.getElementById('allLocationsContainer');
+      container.innerHTML = '';
+      
+      // 获取分组显示状态
+      const groupVisibility = JSON.parse(localStorage.getItem('groupVisibility') || '{}');
+      
+      // 获取保存的分组顺序
+      const savedGroupOrder = JSON.parse(localStorage.getItem('groupOrder') || '[]');
+      
+      // 获取分组映射(设备名称 -> 分组)和按分组整理设备
+      const deviceGroups = {};
+      const groupedDevices = {};
+      
+      // 首先将所有设备按分组整理
+      Object.entries(deviceDict).forEach(([name, id]) => {
+        const firstChar = name.charAt(0).toUpperCase();
+        deviceGroups[name] = firstChar;
+        
+        if (!groupedDevices[firstChar]) {
+          groupedDevices[firstChar] = [];
+        }
+        groupedDevices[firstChar].push([name, id]);
+      });
+      
+      // 获取所有分组名称
+      let allGroups = Object.keys(groupedDevices);
+      
+      // 应用保存的分组顺序
+      let orderedGroups;
+      if (savedGroupOrder.length > 0) {
+        // 先添加保存顺序中存在的分组
+        const validSavedGroups = savedGroupOrder.filter(g => allGroups.includes(g));
+        // 再添加新的分组(按字母顺序)
+        const newGroups = allGroups.filter(g => !savedGroupOrder.includes(g)).sort();
+        orderedGroups = [...validSavedGroups, ...newGroups];
+      } else {
+        // 如果没有保存顺序，按字母顺序排列
+        orderedGroups = allGroups.sort();
+      }
+      
+      // 按排序后的分组顺序渲染设备
+      for (const group of orderedGroups) {
+        // 如果分组被设置为不可见，则跳过
+        if (groupVisibility[group] === false) {
+          continue;
+        }
+        
+        // 该分组中的所有设备
+        const devicesInGroup = groupedDevices[group];
+        
+        // 渲染该分组中的所有设备
+        for (const [name, id] of devicesInGroup) {
+          const card = document.createElement('div');
+          card.className = 'location-card loading';
+          card.id = `location-${id}`;
+          card.setAttribute('data-group', group);
+      
+          const title = document.createElement('div');
+          title.className = 'location-name';
+          title.textContent = name;
+      
+          // 创建12个灰色占位充电桩
+          const placeholderPorts = Array.from({ length: 12 }, (_, i) => ({
+            number: i + 1,
+            status: 'na'
+          }));
+          
+          const portWrapper = createPortContainer(placeholderPorts);
+          
+          card.appendChild(title);
+          card.appendChild(portWrapper);
+          container.appendChild(card);
+        }
+      }
+      
+      // 异步获取实际数据并更新
+      for (const group of orderedGroups) {
+        // 如果分组被设置为不可见，则跳过
+        if (groupVisibility[group] === false) {
+          continue;
+        }
+        
+        // 该分组中的所有设备
+        const devicesInGroup = groupedDevices[group];
+        
+        // 更新该分组中每个设备的实际数据
+        for (const [name, id] of devicesInGroup) {
+          try {
+            const ports = await fetchDevicePorts(id);
+            const oldCard = document.getElementById(`location-${id}`);
+            
+            if (oldCard) {
+              // 移除旧卡片
+              const newCard = createLocationCard(name, id, ports);
+              oldCard.parentNode.replaceChild(newCard, oldCard);
+            }
+          } catch (error) {
+            console.error(`Error updating ports for ${name}:`, error);
+            // 发生错误时也移除加载状态
+            const card = document.getElementById(`location-${id}`);
+            if (card) card.classList.remove('loading');
+          }
+        }
+      }
+      
+      // 应用当前的搜索筛选
+      const searchInput = document.getElementById('searchInput');
+      if (searchInput && searchInput.value) {
+        setTimeout(() => filterLocations(searchInput.value), 100);
+      }
+    }
+
+    // 初始化
+    showPage('home');
+
+    // 改进空闲检查函数
+    async function checkForAvailableChargingPorts() {
+      if (!notifyEnabled) return;
+      
+      // 如果没有订阅任何设备，则无需继续
+      if (notifySubscriptions.length === 0) return;
+      
+      let hasChanges = false;
+      
+      for (const [name, id] of Object.entries(deviceDict)) {
+        // 只检查已订阅的设备
+        if (!isSubscribed(name)) continue;
+        
+        // console.log(`检查设备: ${name}`);
+        
+        try {
+          const ports = await fetchDevicePorts(id);
+          ports.forEach(port => {
+            const key = `${name}-P${port.number}`;
+            const prev = lastStatus[key];
+            const curr = port.status;
+            
+            // console.log(`${key}: 之前=${prev}, 现在=${curr}`);
+            
+            // 只在有明确的从"使用中"到"空闲"的转变时才通知
+            if (prev === 'used' && curr === 'available') {
+              // console.log(`${key} 从使用中变为空闲，发送通知`);
+              showNotification(name, port.number);
+            }
+            
+            // 更新状态
+            lastStatus[key] = curr;
+            hasChanges = true;
+          });
+        } catch (error) {
+          console.error(`检查 ${name} 时出错:`, error);
+        }
+      }
+      
+      // 如果有状态变化，保存到本地存储
+      if (hasChanges) {
+        localStorage.setItem('lastPortStatus', JSON.stringify(lastStatus));
+      }
+    }
+
+    // 在页面加载时初始化检查并申请权限
+    window.addEventListener('load', function() {
+      setupSearch();
+      initializeSearchHistory(); // 添加这行
+      // 更新通知复选框状态
+      const notifyCheckbox = document.getElementById('enableNotify');
+      if (notifyCheckbox) {
+        notifyCheckbox.checked = notifyEnabled;
+      }
+      
+      // 如果已启用通知，请求权限
+      if (notifyEnabled) {
+        requestNotificationPermission();
+        
+        // 立即执行一次检查，初始化状态
+        setTimeout(() => {
+          checkForAvailableChargingPorts();
+        }, 2000);
+      }
+      
+      // 设置定期检查
+      setInterval(checkForAvailableChargingPorts, 10000);
+    });
+    
+    function showNotification(location, portNumber) {
+      // console.log(`尝试显示通知: ${location} 的 P${portNumber} 充电桩已空闲`);
+      
+      if (!("Notification" in window)) {
+        alert(`${location} 的 P${portNumber} 充电桩已空闲！`);
+        return;
+      }
+      
+      if (Notification.permission === 'granted') {
+        const notification = new Notification('充电桩空闲提醒', {
+          body: `${location} 的 P${portNumber} 充电桩已空闲！`,
+          icon: 'icons/icon-192x192.png',
+          vibrate: [200, 100, 200]
+        });
+        
+        notification.onclick = function() {
+          window.focus();
+          showPage('home');
+          this.close();
+        };
+        
+        // 尝试振动
+        if ('vibrate' in navigator) {
+          navigator.vibrate([200, 100, 200]);
+        }
+      } 
+      else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            showNotification(location, portNumber);
+          } else {
+            alert(`${location} 的 P${portNumber} 充电桩已空闲！`);
+          }
+        });
+      }
+      else {
+        alert(`${location} 的 P${portNumber} 充电桩已空闲！`);
+        // 尝试振动
+        if ('vibrate' in navigator) {
+          navigator.vibrate([200, 100, 200]);
+        }
+      }
+    }
+    
+    // 添加自动刷新功能
+    let autoRefreshInterval;
+
+    function startAutoRefresh() {
+      // 如果已经有刷新间隔，先清除
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+      }
+      
+      // 设置30秒自动刷新
+      autoRefreshInterval = setInterval(() => {
+        if (document.getElementById('homePage').style.display === 'block') {
+          // console.log("自动刷新充电桩状态");
+          renderAllChargingPorts();
+        }
+      }, 30000); // 30秒刷新一次
+    }
+
+    // 在页面启动时开始自动刷新
+    startAutoRefresh();
+
+    // 添加页面可见性事件处理
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        if (document.getElementById('homePage').style.display === 'block') {
+          renderAllChargingPorts();
+        }
+        startAutoRefresh();
+      } else {
+        clearInterval(autoRefreshInterval);
+      }
+    });
+
+    // 添加离线状态检测
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+
+    function updateOnlineStatus() {
+      const status = navigator.onLine ? '在线' : '离线';
+      const header = document.querySelector('header');
+      
+      if (!navigator.onLine) {
+        header.style.background = 'linear-gradient(135deg, #6c757d, #495057)';
+        header.innerHTML = `充电桩空闲状态查询 <small style="font-size:0.7em;">(${status}模式)</small>`;
+      } else {
+        header.style.background = 'linear-gradient(135deg, #007bff, #00c6ff)';
+        header.innerHTML = '充电桩空闲状态查询';
+        // 重新加载数据
+        renderAllChargingPorts();
+      }
+    }
+
+    // 初始检查
+    updateOnlineStatus();
+  </script>
+
+  <script>
+    // 注册 Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('ServiceWorker 注册成功: ', registration.scope);
+          })
+          .catch(error => {
+            console.log('ServiceWorker 注册失败: ', error);
+          });
+      });
+    }
+  </script>
+
+</body>
+</html>
